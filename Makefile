@@ -1,30 +1,34 @@
-.PHONY: apply destroy kubeconfig helm teleport agents
+.PHONY: apply destroy kubeconfig helm teleport agents destroy-sans-ip
 
-check-login:
-	@az account show > /dev/null 2>&1 || (echo "❌ Azure CLI not logged in. Run 'az login' first." && exit 1)
-
-apply: check-login
+apply:
 	cd terraform && terraform init && terraform apply -auto-approve
 
-destroy: check-login
+destroy:
 	cd terraform && terraform destroy -auto-approve
+
+destroy-sans-ip:
+	cd terraform && terraform destroy \
+		-target=azurerm_kubernetes_cluster.teleport \
+		-target=azurerm_linux_virtual_machine.ubuntu_client \
+		-target=azurerm_windows_virtual_machine.ad_server \
+		-auto-approve
 
 kubeconfig:
 	az aks get-credentials --resource-group rg-teleport-efrei --name aks-teleport
 
-teleport: check-login
+teleport:
 	@echo "Installing Teleport via Helm..."
-	helm repo add teleport https://charts.releases.teleport.dev
+	helm repo add teleport https://charts.releases.teleport.dev || true
 	helm repo update
 	helm upgrade --install teleport teleport/teleport-cluster \
-  --namespace teleport --create-namespace \
-  -f helm/values.yaml
+		--namespace teleport --create-namespace \
+		-f helm/values.yaml
 
-agents: check-login
-	kubectl apply -n teleport -f k8s/teleport-agents.yaml
+agents:
+	kubectl apply -f k8s/teleport-agents.yaml
 
-apply-clients: check-login
+apply-clients:
 	cd terraform/clients && terraform init && terraform apply -auto-approve
 
-destroy-clients: check-login
+destroy-clients:
 	cd terraform/clients && terraform destroy -auto-approve
