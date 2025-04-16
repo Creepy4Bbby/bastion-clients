@@ -129,7 +129,8 @@ resource "azurerm_linux_virtual_machine" "ubuntu_client" {
 
   provision_vm_agent = true
 
-  custom_data = filebase64("${path.module}/cloud-init/ubuntu-agent.sh")
+ custom_data = filebase64("${path.module}/cloud-init/ubuntu-agent.sh")
+
 }
 
 # ==============================
@@ -180,4 +181,5 @@ resource "azurerm_windows_virtual_machine" "ad_server" {
   provision_vm_agent = true
 
   custom_data = filebase64("${path.module}/cloud-init/ad-init.ps1")
+
 }
