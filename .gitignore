@@ -1,0 +1,31 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+.terraform-provider-azurerm_v3.117.1_x5
+.terraform/
+terraform.tfstate*
+*.backup
+*.tfvars
+*.tfvars.json
+*.tfplan
+*.tfplan.*
+*.tfstate.*
+*.tfstate.backup
+*.log
+
+# VSCode
+.vscode/
+
+# System
+.DS_Store
+*.swp
+
+# Git history
+*.zip
+*.tar.gz
+*.bin
+*.exe
+*.iso
+*.img
