@@ -7,104 +7,93 @@ provider "azurerm" {
 
 data "azurerm_client_config" "current" {}
 
-resource "azurerm_resource_group" "aks" {
-  name     = "rg-teleport-efrei"
+# =======================================
+# RESOURCE GROUP
+# =======================================
+resource "azurerm_resource_group" "main" {
+  name     = var.resource_group
   location = var.location
 }
 
+# =======================================
+# STATIC IP (Module) Teleport
+# =======================================
 module "static_ip" {
-  source         = "./modulesnew"
+  source         = "./modulesnew/static_ip"
   location       = var.location
   resource_group = var.resource_group
+  # resource_group_name attribute removed as it is not expected here
 }
 
-resource "azurerm_kubernetes_cluster" "teleport" {
-  name                = "aks-teleport"
-  location            = azurerm_resource_group.aks.location
-  resource_group_name = azurerm_resource_group.aks.name
-  dns_prefix          = "teleportk8s"
-  sku_tier            = "Free"
-
-  default_node_pool {
-    name       = "default"
-    node_count = 2
-    vm_size    = "Standard_B2s"
-  }
-
-  identity {
-    type = "SystemAssigned"
-  }
-
-  linux_profile {
-    admin_username = "azureuser"
-
-    ssh_key {
-      key_data = file("~/.ssh/id_rsa.pub")
-    }
-  }
-
-  tags = {
-    team = "efrei"
-    env  = "dev"
-  }
+# =======================================
+# 2x AKS CLUSTERS (Modules)
+# =======================================
+module "aks_1" {
+  source               = "./modulesnew/aks"
+  location             = var.location
+  # resource_group attribute removed as it is not expected here
+  resource_group_name  = var.resource_group
+  cluster_name         = "teleport-cluster-1"
+  dns_prefix           = "teleport1"
+  ssh_public_key_path  = "~/.ssh/id_rsa.pub"
 }
 
-resource "azurerm_role_assignment" "aks_user_access" {
-  scope                = azurerm_kubernetes_cluster.teleport.id
-  role_definition_name = "Azure Kubernetes Service Cluster User"
-  principal_id         = data.azurerm_client_config.current.object_id
-  depends_on           = [azurerm_kubernetes_cluster.teleport]
+module "aks_2" {
+  source               = "./modulesnew/aks"
+  location             = var.location
+  resource_group_name  = var.resource_group
+  cluster_name         = "teleport-cluster-2"
+  dns_prefix           = "teleport2"
 }
 
-# ==============================
-#           NETWORKING
-# ==============================
-
-resource "azurerm_virtual_network" "clients_vnet" {
+# =======================================
+# NETWORKING
+# =======================================
+resource "azurerm_virtual_network" "vnet" {
   name                = "clients-vnet"
+  address_space       = ["10.0.0.0/16"]
   location            = var.location
   resource_group_name = var.resource_group
-  address_space       = ["10.0.0.0/16"]
 }
 
-resource "azurerm_subnet" "clients_subnet" {
+resource "azurerm_subnet" "subnet" {
   name                 = "clients-subnet"
   resource_group_name  = var.resource_group
-  virtual_network_name = azurerm_virtual_network.clients_vnet.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.1.0/24"]
 }
 
-# ==============================
-#        VM UBUNTU CLIENT
-# ==============================
-
-resource "azurerm_public_ip" "ubuntu_public_ip" {
-  name                = "ubuntu-client-ip"
+# =======================================
+# VM Ubuntu avec Keepalived
+# =======================================
+resource "azurerm_public_ip" "keepalived_ip" {
+  name                = "ip-keepalived"
   location            = var.location
   resource_group_name = var.resource_group
-  allocation_method   = "Dynamic"
+  allocation_method   = "Static"
+  sku                 = "Standard"
 }
 
-resource "azurerm_network_interface" "ubuntu_nic" {
-  name                = "ubuntu-client-nic"
+resource "azurerm_network_interface" "keepalived_nic" {
+  name                = "nic-keepalived"
   location            = var.location
   resource_group_name = var.resource_group
 
   ip_configuration {
-    name                          = "ubuntu-client-ipconfig"
-    subnet_id                     = azurerm_subnet.clients_subnet.id
+    name                          = "keepalived-config"
+    subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.ubuntu_public_ip.id
+    public_ip_address_id          = azurerm_public_ip.keepalived_ip.id
   }
 }
 
-resource "azurerm_linux_virtual_machine" "ubuntu_client" {
-  name                  = "teleport-ubuntu-client"
+resource "azurerm_linux_virtual_machine" "keepalived_vm" {
+  name                  = "vm-keepalived"
   location              = var.location
   resource_group_name   = var.resource_group
   size                  = "Standard_B1s"
   admin_username        = "ubuntu"
-  network_interface_ids = [azurerm_network_interface.ubuntu_nic.id]
+  network_interface_ids = [azurerm_network_interface.keepalived_nic.id]
 
   disable_password_authentication = true
 
@@ -114,7 +103,7 @@ resource "azurerm_linux_virtual_machine" "ubuntu_client" {
   }
 
   os_disk {
-    name                 = "ubuntu-client-os-disk"
+    name                 = "disk-keepalived"
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
     disk_size_gb         = 30
@@ -128,57 +117,61 @@ resource "azurerm_linux_virtual_machine" "ubuntu_client" {
   }
 
   provision_vm_agent = true
-
-  custom_data = filebase64("${path.module}/cloud-init/ubuntu-agent.sh")
+  custom_data        = filebase64("${path.module}/cloud-init/ubuntu-keepalived.sh")
 }
 
-# ==============================
-#        VM WINDOWS AD
-# ==============================
+# =======================================
+# CLIENT UBUNTU (Pour tester)
+# =======================================
+resource "azurerm_public_ip" "ubuntu_client_ip" {
+  name                = "ip-ubuntu-client"
+  location            = var.location
+  resource_group_name = var.resource_group
+  allocation_method   = "Dynamic"
+}
 
-# resource "azurerm_public_ip" "ad_public_ip" {
-#   name                = "ad-server-ip"
-#   location            = var.location
-#   resource_group_name = var.resource_group
-#   allocation_method   = "Dynamic"
-# }
+resource "azurerm_network_interface" "ubuntu_client_nic" {
+  name                = "nic-ubuntu-client"
+  location            = var.location
+  resource_group_name = var.resource_group
 
-# resource "azurerm_network_interface" "ad_nic" {
-#   name                = "ad-server-nic"
-#   location            = var.location
-#   resource_group_name = var.resource_group
+  ip_configuration {
+    name                          = "client-config"
+    subnet_id                     = azurerm_subnet.subnet.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.ubuntu_client_ip.id
+  }
+}
 
-#   ip_configuration {
-#     name                          = "ad-ipconfig"
-#     subnet_id                     = azurerm_subnet.clients_subnet.id
-#     private_ip_address_allocation = "Dynamic"
-#     public_ip_address_id          = azurerm_public_ip.ad_public_ip.id
-#   }
-# }
+resource "azurerm_linux_virtual_machine" "ubuntu_client" {
+  name                  = "vm-ubuntu-client"
+  location              = var.location
+  resource_group_name   = var.resource_group
+  size                  = "Standard_B1s"
+  admin_username        = "ubuntu"
+  network_interface_ids = [azurerm_network_interface.ubuntu_client_nic.id]
 
-# resource "azurerm_windows_virtual_machine" "ad_server" {
-#   name                  = "ad-server"
-#   location              = var.location
-#   resource_group_name   = var.resource_group
-#   size                  = "Standard_B2ms"
-#   admin_username        = "adminuser"
-#   admin_password        = "SuperSecurePassword123!"
-#   network_interface_ids = [azurerm_network_interface.ad_nic.id]
+  disable_password_authentication = true
 
-#   os_disk {
-#     caching              = "ReadWrite"
-#     storage_account_type = "Standard_LRS"
-#     disk_size_gb         = 127
-#   }
+  admin_ssh_key {
+    username   = "ubuntu"
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
 
-#   source_image_reference {
-#     publisher = "MicrosoftWindowsServer"
-#     offer     = "WindowsServer"
-#     sku       = "2022-Datacenter"
-#     version   = "latest"
-#   }
+  os_disk {
+    name                 = "disk-ubuntu-client"
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+    disk_size_gb         = 30
+  }
 
-#   provision_vm_agent = true
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
 
-#   custom_data = filebase64("${path.module}/cloud-init/ad-init.ps1")
-# }
+  provision_vm_agent = true
+  custom_data        = filebase64("${path.module}/cloud-init/ubuntu-agent.sh")
+}
