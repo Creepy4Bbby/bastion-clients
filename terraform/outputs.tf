@@ -1,3 +1,7 @@
-output "public_ip" {
-  value = azurerm_public_ip.public_ip.ip_address
+output "aks_name" {
+  value = azurerm_kubernetes_cluster.teleport.name
+}
+
+output "resource_group" {
+  value = azurerm_resource_group.aks.name
 }
