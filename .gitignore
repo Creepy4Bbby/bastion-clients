@@ -1,0 +1,17 @@
+# Terraform
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+
+# IDEs
+.vscode/
+.idea/
+
+# System
+.DS_Store
+
+# Ansible
+*.retry
+
+# Autres
+*.log
