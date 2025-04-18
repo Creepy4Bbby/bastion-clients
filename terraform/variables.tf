@@ -1,10 +1,9 @@
 variable "resource_group" {
-  description = "Resource group name"
-  type        = string
+  type    = string
+  default = "rg-teleport-efrei"
 }
 
 variable "location" {
-  description = "Azure region"
-  type        = string
-  default     = "francecentral"
+  type    = string
+  default = "francecentral"
 }
