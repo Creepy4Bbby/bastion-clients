@@ -88,7 +88,7 @@ resource "azurerm_linux_virtual_machine" "ubuntu_client" {
 
   provision_vm_agent = true
 
-  custom_data = filebase64("./cloud-init/ubuntu-agent.sh")
+  custom_data = filebase64("./clients/cloud-init/ubuntu-agent.sh")
 }
 
 ######################
@@ -140,7 +140,7 @@ resource "azurerm_windows_virtual_machine" "example" {
     version   = "latest"
   }
 
-  custom_data = filebase64("./cloud-init/ad-init.ps1")
+  custom_data = filebase64("./clients/cloud-init/ad-init.ps1")
 }
 
 # ⬆️ Ajoute aussi ta ressource de cluster AKS (que tu as déjà dans un autre fichier ou module)
