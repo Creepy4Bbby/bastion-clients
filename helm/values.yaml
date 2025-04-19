@@ -1,5 +1,5 @@
 clusterName: "teleportnew.dhuet.cloud"
-acme: "true"
+acme: true
 acmeEmail: "dolores.huet@efrei.net"
 roles: ["proxy", "auth"]
 
@@ -14,8 +14,8 @@ config:
 replicaCount: 2
 
 extraArgs:
-  
---diag-addr=0.0.0.0:3000
+  - "--diag-addr=0.0.0.0:3000"
+
 
 resources:
   limits:

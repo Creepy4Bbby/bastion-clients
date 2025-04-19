@@ -3,14 +3,22 @@
 check-login:
 	@az account show > /dev/null 2>&1 || (echo "❌ Azure CLI not logged in. Run 'az login' first." && exit 1)
 
+plan: check-login
+	cd terraform && terraform init && terraform plan
+	@echo "Terraform plan completed."
+
 apply: check-login
-	cd terraform && terraform init && terraform apply -auto-approve
+	cd terraform && terraform apply -auto-approve
+	@echo "Terraform apply completed."
+	@echo "Waiting for AKS to be ready..."
+	@az aks wait --resource-group rg-teleport-efrei --name aks-teleport --created
+	@echo "AKS is ready. Waiting for pods to be ready..."
 
 destroy: check-login
 	cd terraform && terraform destroy -auto-approve
 
 kubeconfig:
-	az aks get-credentials --resource-group rg-teleport-efrei --name aks-teleport
+	az aks get-credentials --resource-group rg-teleport-efrei --name teleport-aks
 
 teleport: check-login
 	@echo "Installing Teleport via Helm..."
@@ -20,12 +28,11 @@ teleport: check-login
   --namespace teleport --create-namespace \
   -f helm/values.yaml
 	
-
 	@echo "Teleport installed. Waiting for pods to be ready..."
-	kubectl wait --for=condition=available --timeout=600s -n teleport deployment/teleport-teleport
+	# kubectl wait --for=condition=available --timeout=600s -n teleport deployment/teleport
 	@echo "Teleport is ready."
-	@echo "Teleport is ready. You can access it at https://teleport.efrei.online:3080"
-	kubectl exec -it -n teleport pod/teleport_id -- tctl users add admin --roles=editor,auditor,access
+	@echo "Teleport is ready. You can access it at https://teleportnew.dhuet.cloud"
+	kubectl exec -it -n teleport pod/teleport-auth-699c6d64bb-kvkm9 -- tctl users add admin --roles=editor,auditor,access
 	# #  Mettre id du pod auth
 
 teleportupdate:	check-login
