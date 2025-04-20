@@ -44,8 +44,8 @@ teleportupdate:	check-login
 agents: check-login
 	kubectl apply -n teleport -f k8s/teleport-agents.yaml
 
-apply-clients: check-login
-	cd terraform/clients && terraform init && terraform apply -auto-approve
+apply-ubuntu-client: check-login
+	cd terraform/clients/ubuntu && terraform init && terraform apply -auto-approve
 
-destroy-clients: check-login
-	cd terraform/clients && terraform destroy -auto-approve
+destroy-ubuntu-client: check-login
+	cd terraform/clients/ubuntu && terraform destroy -auto-approve

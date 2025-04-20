@@ -101,39 +101,3 @@ resource "azurerm_kubernetes_cluster" "teleport" {
 }
 
 
-# # ===============================
-# # VM UBUNTU CLIENT (pour tester teleport)
-# # ===============================
-# resource "azurerm_linux_virtual_machine" "ubuntu_client" {
-#   name                  = "teleport-ubuntu-client"
-#   resource_group_name   = azurerm_resource_group.main.name
-#   location              = var.location
-#   size                  = "Standard_B1s"                                   # VM économique
-#   admin_username        = "ubuntu"
-#   network_interface_ids = [azurerm_network_interface.ubuntu_nic.id]
-
-#   disable_password_authentication = true
-
-#   admin_ssh_key {
-#     username   = "ubuntu"
-#     public_key = file("/home/ubuntu/.ssh/id_rsa.pub")
-#   }
-
-#   os_disk {
-#     name                 = "ubuntu-client-os-disk"
-#     caching              = "ReadWrite"
-#     storage_account_type = "Standard_LRS"
-#     disk_size_gb         = 30
-#   }
-  
-#   source_image_reference {
-#     publisher = "Canonical"
-#     offer     = "UbuntuServer"
-#     sku       = "22.04-lts"  # 🔧 Corrigé ici !
-#     version   = "latest"
-#   }
-
-
-#   provision_vm_agent = true
-#   custom_data        = filebase64("./clients/cloud-init/ubuntu-agent.sh")
-# }
