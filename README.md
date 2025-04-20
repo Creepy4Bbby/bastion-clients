@@ -77,6 +77,8 @@ Après exécution de `make teleport`, tu peux accéder à Teleport :
 
 🔗 **https://teleportnew.dhuet.cloud**
 
+Changement de l'ip sur mon OVH me ping ;) 
+
 > Tu peux ajouter des utilisateurs via :
 ```bash
 kubectl exec -it -n teleport pod/<pod-auth-name> -- tctl users add <user> --roles=editor,access,auditor
