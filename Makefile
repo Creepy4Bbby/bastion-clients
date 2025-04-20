@@ -49,3 +49,10 @@ apply-ubuntu-client: check-login
 
 destroy-ubuntu-client: check-login
 	cd terraform/clients/ubuntu && terraform destroy -auto-approve
+
+
+apply-add-client: check-login
+	cd terraform/clients/ad && terraform init && terraform apply -auto-approve
+
+destroy-add-client: check-login
+	cd terraform/clients/ad && terraform init && terraform destroy -auto-approve
